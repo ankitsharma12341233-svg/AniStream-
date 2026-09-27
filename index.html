@@ -1,0 +1,785 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AniStream</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        crOrange: '#f47521',
+                        crDark: '#000000',
+                        crGray: '#141519',
+                        crCard: '#23252b',
+                        crLight: '#a0a0a0'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #141519;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #393b40;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f47521;
+        }
+
+        /* Custom File Input Styling */
+        input[type="file"] {
+            display: none;
+        }
+        .file-upload-label {
+            display: inline-block;
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #23252b;
+            border: 1px solid #393b40;
+            border-radius: 4px;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+        .file-upload-label:hover {
+            background-color: #393b40;
+        }
+
+        /* Player Customization */
+        video {
+            width: 100%;
+            border-radius: 8px;
+            background: #000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+        }
+        video::cue {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #f47521;
+            font-size: 1.2rem;
+            font-family: 'Inter', sans-serif;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .hide { display: none !important; }
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-200">
+
+    <div id="app-container" class="min-h-screen flex flex-col">
+        
+        <!-- Auth View -->
+        <div id="auth-view" class="flex-grow flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center relative">
+            <div class="absolute inset-0 bg-black/80"></div>
+            <div class="z-10 bg-crGray p-8 rounded-lg shadow-2xl w-full max-w-md border border-gray-800">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-crOrange flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-tv"></i> AniStream
+                    </h1>
+                    <p class="text-sm text-crLight mt-2" id="auth-subtitle">Sign in to your account</p>
+                </div>
+
+                <form id="auth-form" class="space-y-4">
+                    <div>
+                        <input type="text" id="auth-username" required placeholder="Username" class="w-full bg-crDark border border-gray-700 rounded px-4 py-3 focus:outline-none focus:border-crOrange focus:ring-1 focus:ring-crOrange transition">
+                    </div>
+                    <div>
+                        <input type="password" id="auth-password" required placeholder="Password" class="w-full bg-crDark border border-gray-700 rounded px-4 py-3 focus:outline-none focus:border-crOrange focus:ring-1 focus:ring-crOrange transition">
+                    </div>
+                    <button type="submit" id="auth-submit-btn" class="w-full bg-crOrange text-black font-bold uppercase tracking-wide py-3 rounded hover:bg-orange-400 transition">LOG IN</button>
+                </form>
+
+                <div class="mt-6 text-center text-sm">
+                    <p class="text-crLight">
+                        <span id="auth-toggle-text">Don't have an account?</span> 
+                        <a href="#" id="auth-toggle-link" class="text-crOrange hover:underline ml-1">Create one</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application View -->
+        <div id="main-view" class="hide flex-col flex-grow">
+            <!-- Navbar -->
+            <nav class="bg-crGray border-b border-gray-800 sticky top-0 z-40">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center justify-between h-16">
+                        <!-- Logo -->
+                        <div class="flex items-center gap-6">
+                            <a href="#" id="nav-logo" class="flex-shrink-0 flex items-center gap-2 text-2xl font-bold text-crOrange cursor-pointer">
+                                <i class="fa-solid fa-tv"></i> AniStream
+                            </a>
+                            <div class="hidden md:block">
+                                <a href="#" id="nav-home" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Home</a>
+                                <a href="#" id="nav-browse" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition">Playlists</a>
+                            </div>
+                        </div>
+
+                        <!-- Search & Profile -->
+                        <div class="flex items-center gap-4">
+                            <div class="relative hidden sm:block">
+                                <input type="text" id="search-input" placeholder="Search anime, playlists..." class="bg-crDark border border-gray-700 rounded-sm py-1.5 pl-3 pr-10 text-sm focus:outline-none focus:border-crOrange text-white w-64 transition">
+                                <i class="fa-solid fa-magnifying-glass absolute right-3 top-2.5 text-gray-400 text-xs"></i>
+                            </div>
+
+                            <!-- Profile Dropdown -->
+                            <div class="relative ml-3 group">
+                                <button id="profile-btn" class="flex items-center max-w-xs bg-crDark rounded-full focus:outline-none focus:ring-2 focus:ring-crOrange overflow-hidden h-8 w-8 justify-center border border-gray-700">
+                                    <i class="fa-solid fa-user text-crLight text-sm"></i>
+                                </button>
+                                
+                                <div id="profile-dropdown" class="hide absolute right-0 mt-2 w-56 bg-crCard border border-gray-700 rounded shadow-lg py-1 z-50">
+                                    <div class="px-4 py-3 border-b border-gray-700">
+                                        <p class="text-sm font-medium text-white truncate" id="profile-username">User</p>
+                                    </div>
+                                    <div class="px-4 py-3 border-b border-gray-700">
+                                        <div class="flex items-center justify-between cursor-pointer" id="toggle-subtitles-btn">
+                                            <span class="text-sm text-gray-300">Global Subtitles</span>
+                                            <div class="relative inline-block w-8 h-4 bg-gray-600 rounded-full transition duration-300 ease-in-out">
+                                                <span id="subtitle-toggle-indicator" class="absolute left-1 top-0.5 bg-white w-3 h-3 rounded-full transition transform translate-x-4 bg-crOrange"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <a href="#" id="logout-btn" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition">Sign out</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+                
+                <!-- Home View -->
+                <div id="home-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold border-l-4 border-crOrange pl-3 text-white">Anime Catalogs</h2>
+                        <!-- Admin Only: Create Playlist button -->
+                        <button id="open-create-playlist-modal" class="bg-crDark hover:bg-gray-800 border border-crOrange text-crOrange px-4 py-2 rounded text-sm font-semibold flex items-center gap-2 transition hide">
+                            <i class="fa-solid fa-plus"></i> Create Playlist
+                        </button>
+                    </div>
+                    
+                    <div id="playlists-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                        <!-- Playlists rendered here via JS -->
+                    </div>
+                    <div id="no-playlists-msg" class="text-center py-20 text-crLight hide">
+                        <i class="fa-solid fa-folder-open text-4xl mb-4 text-gray-600"></i>
+                        <p class="text-lg">No playlists available right now. Check back soon!</p>
+                    </div>
+                </div>
+
+                <!-- Playlist Detail View -->
+                <div id="playlist-detail-view" class="hide">
+                    <button id="back-to-home" class="text-crLight hover:text-white mb-6 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Playlists
+                    </button>
+                    
+                    <div class="flex flex-col md:flex-row gap-8 mb-10">
+                        <img id="detail-playlist-thumb" src="" alt="Thumbnail" class="w-full md:w-64 h-64 md:h-auto object-cover rounded shadow-lg">
+                        <div class="flex-grow flex flex-col justify-end">
+                            <h2 id="detail-playlist-title" class="text-4xl font-bold text-white mb-2">Playlist Title</h2>
+                            <p class="text-crLight mb-6">Custom Anime Collection</p>
+                            <!-- Admin Only: Upload Video Button -->
+                            <div id="admin-upload-container" class="hide">
+                                <button id="open-add-video-modal" class="bg-crOrange text-black px-6 py-2 rounded font-bold hover:bg-orange-400 transition flex items-center gap-2 w-max">
+                                    <i class="fa-solid fa-video"></i> Upload Video
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-bold border-l-4 border-crOrange pl-3 text-white mb-4">Videos in this playlist</h3>
+                    <div id="videos-list" class="space-y-3">
+                        <!-- Videos rendered here -->
+                    </div>
+                    <div id="no-videos-msg" class="text-crLight text-center py-10 bg-crCard rounded border border-gray-800">
+                        No videos added to this playlist yet.
+                    </div>
+                </div>
+
+                <!-- Player View -->
+                <div id="player-view" class="hide">
+                    <button id="back-to-playlist" class="text-crLight hover:text-white mb-4 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Playlist
+                    </button>
+
+                    <div class="max-w-5xl mx-auto">
+                        <div class="relative bg-black rounded-lg overflow-hidden shadow-2xl border border-gray-800 aspect-video">
+                            <!-- Native Video Element -->
+                            <video id="main-video-player" controls preload="metadata" class="w-full h-full">
+                                <source id="video-source" src="" type="video/mp4">
+                                <!-- Dummy Subtitle Track to be managed by JS -->
+                                <track id="subtitle-track" label="English" kind="subtitles" srclang="en" default>
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+
+                        <div class="mt-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-crCard p-6 rounded-lg border border-gray-800">
+                            <div>
+                                <h2 id="player-video-title" class="text-2xl font-bold text-white mb-1">Video Title</h2>
+                                <p id="player-playlist-title" class="text-crOrange text-sm">From: Playlist Name</p>
+                            </div>
+                            
+                            <div class="flex items-center gap-4">
+                                <!-- Playback Speed Controls -->
+                                <div class="flex items-center gap-2 bg-crDark px-3 py-1.5 rounded border border-gray-700">
+                                    <i class="fa-solid fa-gauge-high text-crLight text-sm"></i>
+                                    <select id="playback-speed" class="bg-transparent text-white text-sm focus:outline-none cursor-pointer appearance-none">
+                                        <option value="0.5">0.5x Speed</option>
+                                        <option value="1" selected>1.0x Speed</option>
+                                        <option value="1.5">1.5x Speed</option>
+                                        <option value="2">2.0x Speed</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Local Subtitle Toggle Override -->
+                                <button id="player-subtitle-toggle" class="bg-crDark border border-gray-700 text-white hover:text-crOrange hover:border-crOrange px-3 py-1.5 rounded flex items-center gap-2 transition text-sm">
+                                    <i class="fa-solid fa-closed-captioning"></i>
+                                    <span id="player-subtitle-status">CC On</span>
+                                </button>
+
+                                <!-- Download Button -->
+                                <button id="download-video-btn" class="bg-crDark border border-gray-700 text-white hover:text-crOrange hover:border-crOrange px-3 py-1.5 rounded flex items-center gap-2 transition text-sm">
+                                    <i class="fa-solid fa-download"></i> Download
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Create Playlist Modal -->
+    <div id="modal-create-playlist" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hide">
+        <div class="bg-crCard w-full max-w-md p-6 rounded-lg border border-gray-700 shadow-xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white">Create New Playlist</h3>
+                <button class="close-modal text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Playlist Title</label>
+                    <input type="text" id="new-playlist-title" placeholder="e.g. Action Favorites" class="w-full bg-crDark border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-crOrange transition">
+                </div>
+                
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Thumbnail Cover (Image)</label>
+                    <label for="new-playlist-thumb" class="file-upload-label w-full flex flex-col items-center justify-center py-6 border-dashed border-2 border-gray-600 hover:border-crOrange">
+                        <i class="fa-regular fa-image text-2xl text-gray-400 mb-2"></i>
+                        <span id="playlist-thumb-name" class="text-sm text-gray-300">Choose from device</span>
+                    </label>
+                    <input type="file" id="new-playlist-thumb" accept="image/*">
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6">
+                    <button class="close-modal px-4 py-2 rounded text-sm font-medium text-gray-300 hover:text-white transition">Cancel</button>
+                    <button id="save-playlist-btn" class="bg-crOrange text-black px-4 py-2 rounded text-sm font-bold hover:bg-orange-400 transition">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Video Modal -->
+    <div id="modal-add-video" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hide">
+        <div class="bg-crCard w-full max-w-md p-6 rounded-lg border border-gray-700 shadow-xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white">Upload Video</h3>
+                <button class="close-modal text-gray-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Video Title</label>
+                    <input type="text" id="new-video-title" placeholder="e.g. Episode 1 - The Beginning" class="w-full bg-crDark border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-crOrange transition">
+                </div>
+                
+                <div>
+                    <label class="block text-sm text-gray-300 mb-1">Video File (MP4)</label>
+                    <label for="new-video-file" class="file-upload-label w-full flex flex-col items-center justify-center py-6 border-dashed border-2 border-gray-600 hover:border-crOrange">
+                        <i class="fa-solid fa-file-video text-2xl text-gray-400 mb-2"></i>
+                        <span id="video-file-name" class="text-sm text-gray-300">Select video from storage</span>
+                    </label>
+                    <input type="file" id="new-video-file" accept="video/mp4,video/x-m4v,video/*">
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6">
+                    <button class="close-modal px-4 py-2 rounded text-sm font-medium text-gray-300 hover:text-white transition">Cancel</button>
+                    <button id="save-video-btn" class="bg-crOrange text-black px-4 py-2 rounded text-sm font-bold hover:bg-orange-400 transition">Upload to Playlist</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const ADMIN_EMAIL = 'redsteam503@gmail.com';
+
+        const state = {
+            isAuthModeLogin: true,
+            currentUser: null,
+            subtitlesEnabled: true,
+            searchQuery: '',
+            playlists: [
+                {
+                    id: 'default-1',
+                    title: 'Action Masterpieces',
+                    thumbnailUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=600&auto=format&fit=crop',
+                    videos: [
+                        {
+                            id: 'v-1',
+                            title: 'Episode 1 - Awakening',
+                            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                            fileName: 'BigBuckBunny.mp4'
+                        }
+                    ]
+                }
+            ], 
+            currentView: 'auth', // auth, home, playlist, player
+            activePlaylistId: null,
+            activeVideoId: null
+        };
+
+        // --- DOM Elements ---
+        const els = {
+            authView: document.getElementById('auth-view'),
+            mainView: document.getElementById('main-view'),
+            
+            // Auth Form
+            authForm: document.getElementById('auth-form'),
+            authTitle: document.getElementById('auth-subtitle'),
+            authUsername: document.getElementById('auth-username'),
+            authToggleText: document.getElementById('auth-toggle-text'),
+            authToggleLink: document.getElementById('auth-toggle-link'),
+            authSubmitBtn: document.getElementById('auth-submit-btn'),
+            
+            // Nav
+            profileBtn: document.getElementById('profile-btn'),
+            profileDropdown: document.getElementById('profile-dropdown'),
+            profileUsername: document.getElementById('profile-username'),
+            logoutBtn: document.getElementById('logout-btn'),
+            toggleSubtitlesBtn: document.getElementById('toggle-subtitles-btn'),
+            subtitleToggleIndicator: document.getElementById('subtitle-toggle-indicator'),
+            searchInput: document.getElementById('search-input'),
+            navHome: document.getElementById('nav-home'),
+            navBrowse: document.getElementById('nav-browse'),
+            navLogo: document.getElementById('nav-logo'),
+            
+            // Views
+            homeContent: document.getElementById('home-content'),
+            playlistDetailView: document.getElementById('playlist-detail-view'),
+            playerView: document.getElementById('player-view'),
+            
+            // Home View
+            playlistsGrid: document.getElementById('playlists-grid'),
+            noPlaylistsMsg: document.getElementById('no-playlists-msg'),
+            btnOpenCreatePlaylist: document.getElementById('open-create-playlist-modal'),
+            
+            // Playlist Detail View
+            detailPlaylistThumb: document.getElementById('detail-playlist-thumb'),
+            detailPlaylistTitle: document.getElementById('detail-playlist-title'),
+            videosList: document.getElementById('videos-list'),
+            noVideosMsg: document.getElementById('no-videos-msg'),
+            backToHomeBtn: document.getElementById('back-to-home'),
+            adminUploadContainer: document.getElementById('admin-upload-container'),
+            
+            // Player View
+            videoPlayer: document.getElementById('main-video-player'),
+            videoSource: document.getElementById('video-source'),
+            subtitleTrack: document.getElementById('subtitle-track'),
+            playerVideoTitle: document.getElementById('player-video-title'),
+            playerPlaylistTitle: document.getElementById('player-playlist-title'),
+            playbackSpeed: document.getElementById('playback-speed'),
+            playerSubtitleToggle: document.getElementById('player-subtitle-toggle'),
+            playerSubtitleStatus: document.getElementById('player-subtitle-status'),
+            downloadVideoBtn: document.getElementById('download-video-btn'),
+            backToPlaylistBtn: document.getElementById('back-to-playlist'),
+
+            // Modals
+            modals: document.querySelectorAll('.fixed.inset-0'),
+            closeModalBtns: document.querySelectorAll('.close-modal'),
+            
+            // Create Playlist Modal
+            modalCreatePlaylist: document.getElementById('modal-create-playlist'),
+            newPlaylistTitle: document.getElementById('new-playlist-title'),
+            newPlaylistThumbInput: document.getElementById('new-playlist-thumb'),
+            playlistThumbName: document.getElementById('playlist-thumb-name'),
+            savePlaylistBtn: document.getElementById('save-playlist-btn'),
+            
+            // Add Video Modal
+            modalAddVideo: document.getElementById('modal-add-video'),
+            btnOpenAddVideo: document.getElementById('open-add-video-modal'),
+            newVideoTitle: document.getElementById('new-video-title'),
+            newVideoFileInput: document.getElementById('new-video-file'),
+            videoFileName: document.getElementById('video-file-name'),
+            saveVideoBtn: document.getElementById('save-video-btn')
+        };
+
+        // --- Navigation Logic ---
+        function navigate(viewName) {
+            state.currentView = viewName;
+            
+            // Hide all views
+            els.authView.classList.add('hide');
+            els.mainView.classList.add('hide');
+            els.homeContent.classList.add('hide');
+            els.playlistDetailView.classList.add('hide');
+            els.playerView.classList.add('hide');
+
+            if (viewName === 'auth') {
+                els.authView.classList.remove('hide');
+            } else {
+                els.mainView.classList.remove('hide');
+                els.mainView.classList.add('flex');
+                
+                if (viewName === 'home') {
+                    els.homeContent.classList.remove('hide');
+                    renderPlaylists();
+                } else if (viewName === 'playlist') {
+                    els.playlistDetailView.classList.remove('hide');
+                    renderPlaylistDetail();
+                } else if (viewName === 'player') {
+                    els.playerView.classList.remove('hide');
+                    setupPlayer();
+                }
+            }
+        }
+
+        // --- Subtitles & Helpers ---
+        function updateSubtitleUI() {
+            if (state.subtitlesEnabled) {
+                els.subtitleToggleIndicator.classList.remove('translate-x-0', 'bg-gray-400');
+                els.subtitleToggleIndicator.classList.add('translate-x-4', 'bg-crOrange');
+                els.playerSubtitleStatus.textContent = 'CC On';
+                els.subtitleTrack.mode = 'showing';
+            } else {
+                els.subtitleToggleIndicator.classList.remove('translate-x-4', 'bg-crOrange');
+                els.subtitleToggleIndicator.classList.add('translate-x-0', 'bg-gray-400');
+                els.playerSubtitleStatus.textContent = 'CC Off';
+                els.subtitleTrack.mode = 'hidden';
+            }
+        }
+
+        function generateDummySubtitleBlob() {
+            const vttContent = `WEBVTT
+
+1
+00:00:01.000 --> 00:00:05.000
+[Music playing]
+
+2
+00:00:05.500 --> 00:00:09.000
+Welcome to AniStream! Enjoy your show.`;
+            const blob = new Blob([vttContent], { type: 'text/vtt' });
+            els.subtitleTrack.src = URL.createObjectURL(blob);
+        }
+
+        // Helper to check if current user is admin
+        function isAdmin() {
+            return state.currentUser && state.currentUser.username.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+        }
+
+        function updateAdminUI() {
+            if (isAdmin()) {
+                els.btnOpenCreatePlaylist.classList.remove('hide');
+                els.adminUploadContainer.classList.remove('hide');
+            } else {
+                els.btnOpenCreatePlaylist.classList.add('hide');
+                els.adminUploadContainer.classList.add('hide');
+            }
+        }
+
+        // Profile Dropdown Toggle
+        els.profileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            els.profileDropdown.classList.toggle('hide');
+        });
+
+        document.addEventListener('click', () => {
+            els.profileDropdown.classList.add('hide');
+        });
+
+        els.toggleSubtitlesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            state.subtitlesEnabled = !state.subtitlesEnabled;
+            updateSubtitleUI();
+        });
+
+        // Search Listener
+        els.searchInput.addEventListener('input', (e) => {
+            state.searchQuery = e.target.value.toLowerCase();
+            if (state.currentView === 'home') {
+                renderPlaylists();
+            }
+        });
+
+        els.navHome.addEventListener('click', (e) => { e.preventDefault(); navigate('home'); });
+        els.navBrowse.addEventListener('click', (e) => { e.preventDefault(); navigate('home'); });
+        els.navLogo.addEventListener('click', (e) => { e.preventDefault(); navigate('home'); });
+
+        els.authForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = els.authUsername.value.trim();
+            if (username) {
+                state.currentUser = { username: username };
+                els.profileUsername.textContent = username;
+                els.authUsername.value = '';
+                document.getElementById('auth-password').value = '';
+                updateAdminUI();
+                navigate('home');
+                generateDummySubtitleBlob();
+            }
+        });
+
+        els.logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            state.currentUser = null;
+            navigate('auth');
+            els.videoPlayer.pause();
+        });
+        
+        els.playerSubtitleToggle.addEventListener('click', () => {
+            state.subtitlesEnabled = !state.subtitlesEnabled;
+            updateSubtitleUI();
+        });
+
+        // --- Playlists Logic ---
+        
+        function renderPlaylists() {
+            els.playlistsGrid.innerHTML = '';
+            let filteredPlaylists = state.playlists.filter(p => p.title.toLowerCase().includes(state.searchQuery));
+            
+            if (filteredPlaylists.length === 0) {
+                els.noPlaylistsMsg.classList.remove('hide');
+            } else {
+                els.noPlaylistsMsg.classList.add('hide');
+                filteredPlaylists.forEach(playlist => {
+                    const card = document.createElement('div');
+                    card.className = "bg-crCard rounded overflow-hidden group cursor-pointer border border-gray-800 hover:border-crOrange transition-all duration-300 transform hover:-translate-y-1";
+                    card.innerHTML = `
+                        <div class="relative pb-[140%]">
+                            <img src="${playlist.thumbnailUrl}" class="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:opacity-75">
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
+                                <i class="fa-solid fa-play text-4xl text-crOrange drop-shadow-md"></i>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="font-semibold text-white truncate group-hover:text-crOrange transition">${playlist.title}</h3>
+                            <p class="text-xs text-crLight mt-1">${playlist.videos.length} Videos</p>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => {
+                        state.activePlaylistId = playlist.id;
+                        navigate('playlist');
+                    });
+                    els.playlistsGrid.appendChild(card);
+                });
+            }
+        }
+
+        function renderPlaylistDetail() {
+            const playlist = state.playlists.find(p => p.id === state.activePlaylistId);
+            if (!playlist) return navigate('home');
+
+            els.detailPlaylistTitle.textContent = playlist.title;
+            els.detailPlaylistThumb.src = playlist.thumbnailUrl;
+            els.videosList.innerHTML = '';
+
+            if (playlist.videos.length === 0) {
+                els.noVideosMsg.classList.remove('hide');
+            } else {
+                els.noVideosMsg.classList.add('hide');
+                playlist.videos.forEach((video, index) => {
+                    const vEl = document.createElement('div');
+                    vEl.className = "flex items-center justify-between bg-crDark border border-gray-800 p-4 rounded hover:bg-gray-800 cursor-pointer transition group";
+                    vEl.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-crLight group-hover:text-crOrange group-hover:bg-gray-700 transition">
+                                ${index + 1}
+                            </div>
+                            <div class="font-medium text-gray-200 group-hover:text-white">${video.title}</div>
+                        </div>
+                        <i class="fa-solid fa-play text-crOrange opacity-0 group-hover:opacity-100 transition"></i>
+                    `;
+                    vEl.addEventListener('click', () => {
+                        state.activeVideoId = video.id;
+                        navigate('player');
+                    });
+                    els.videosList.appendChild(vEl);
+                });
+            }
+        }
+
+        els.backToHomeBtn.addEventListener('click', () => { navigate('home'); });
+
+        // --- Modals & File Handling ---
+        
+        function closeModal(modalEl) {
+            modalEl.classList.add('hide');
+            if(modalEl === els.modalCreatePlaylist) {
+                els.newPlaylistTitle.value = '';
+                els.newPlaylistThumbInput.value = '';
+                els.playlistThumbName.textContent = 'Choose from device';
+            }
+            if(modalEl === els.modalAddVideo) {
+                els.newVideoTitle.value = '';
+                els.newVideoFileInput.value = '';
+                els.videoFileName.textContent = 'Select video from storage';
+            }
+        }
+
+        els.closeModalBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modal = e.target.closest('.fixed.inset-0');
+                closeModal(modal);
+            });
+        });
+
+        els.btnOpenCreatePlaylist.addEventListener('click', () => {
+            els.modalCreatePlaylist.classList.remove('hide');
+        });
+        
+        els.btnOpenAddVideo.addEventListener('click', () => {
+            els.modalAddVideo.classList.remove('hide');
+        });
+
+        els.newPlaylistThumbInput.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) els.playlistThumbName.textContent = e.target.files[0].name;
+            else els.playlistThumbName.textContent = 'Choose from device';
+        });
+
+        els.newVideoFileInput.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) els.videoFileName.textContent = e.target.files[0].name;
+            else els.videoFileName.textContent = 'Select video from storage';
+        });
+
+        els.savePlaylistBtn.addEventListener('click', () => {
+            if (!isAdmin()) {
+                alert('Unauthorized action.');
+                return;
+            }
+            const title = els.newPlaylistTitle.value.trim();
+            const file = els.newPlaylistThumbInput.files[0];
+            
+            if (!title) { alert('Please enter a title'); return; }
+            if (!file) { alert('Please select a thumbnail'); return; }
+
+            const thumbnailUrl = URL.createObjectURL(file);
+            const newPlaylist = {
+                id: Date.now().toString(),
+                title: title,
+                thumbnailUrl: thumbnailUrl,
+                videos: []
+            };
+
+            state.playlists.push(newPlaylist);
+            closeModal(els.modalCreatePlaylist);
+            renderPlaylists();
+        });
+
+        els.saveVideoBtn.addEventListener('click', () => {
+            if (!isAdmin()) {
+                alert('Unauthorized action.');
+                return;
+            }
+            const title = els.newVideoTitle.value.trim();
+            const file = els.newVideoFileInput.files[0];
+            
+            if (!title) { alert('Please enter a video title'); return; }
+            if (!file) { alert('Please select a video file'); return; }
+
+            const videoUrl = URL.createObjectURL(file);
+            const playlist = state.playlists.find(p => p.id === state.activePlaylistId);
+            
+            playlist.videos.push({
+                id: Date.now().toString(),
+                title: title,
+                videoUrl: videoUrl,
+                fileName: file.name
+            });
+
+            closeModal(els.modalAddVideo);
+            renderPlaylistDetail();
+        });
+
+        // --- Player Logic ---
+        
+        function setupPlayer() {
+            const playlist = state.playlists.find(p => p.id === state.activePlaylistId);
+            const video = playlist.videos.find(v => v.id === state.activeVideoId);
+            
+            if (!playlist || !video) return navigate('playlist');
+
+            els.playerVideoTitle.textContent = video.title;
+            els.playerPlaylistTitle.textContent = `From: ${playlist.title}`;
+            
+            els.videoPlayer.src = video.videoUrl;
+            els.videoPlayer.load();
+            
+            updateSubtitleUI();
+            
+            els.playbackSpeed.value = "1";
+            els.videoPlayer.playbackRate = 1.0;
+
+            els.videoPlayer.play().catch(e => console.log("Autoplay prevented by browser."));
+        }
+
+        els.playbackSpeed.addEventListener('change', (e) => {
+            els.videoPlayer.playbackRate = parseFloat(e.target.value);
+        });
+
+        els.backToPlaylistBtn.addEventListener('click', () => {
+            els.videoPlayer.pause();
+            els.videoPlayer.src = "";
+            navigate('playlist');
+        });
+
+        els.downloadVideoBtn.addEventListener('click', () => {
+            const playlist = state.playlists.find(p => p.id === state.activePlaylistId);
+            const video = playlist.videos.find(v => v.id === state.activeVideoId);
+            if(video) {
+                const a = document.createElement('a');
+                a.href = video.videoUrl;
+                a.download = video.fileName || (video.title + '.mp4');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        });
+
+    </script>
+</body>
+</html>
+```
